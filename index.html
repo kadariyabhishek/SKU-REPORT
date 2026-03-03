@@ -231,6 +231,35 @@
   /* Indent SKU items */
   td.product-name { padding-left: 28px; }
   td.brand-name { padding-left: 18px; color: var(--subtotal-text); font-weight: 500; }
+  td.sku-indent { padding-left: 44px !important; }
+  td.brand-indent { padding-left: 28px; }
+
+  /* SIZE header row */
+  tr.size-header td {
+    background: #1a1a2e;
+    color: var(--accent-fj);
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    border-top: 1px solid rgba(232,247,84,0.15);
+    border-bottom: 1px solid rgba(232,247,84,0.08);
+  }
+
+  /* SIZE total row */
+  tr.size-total td {
+    background: rgba(232,247,84,0.07);
+    color: var(--accent-fj);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 9px 18px;
+    border-top: 1px solid rgba(232,247,84,0.15);
+    border-bottom: 2px solid rgba(232,247,84,0.2);
+  }
+  tr.size-total td:last-child { text-align: right; }
 
   .summary-bar {
     display: flex;
@@ -349,17 +378,18 @@ function processData(raw) {
   // Filter out total rows (no STOCKIEST CODE)
   const data = raw.filter(r => r['STOCKIEST CODE']);
 
-  // FJ: DIVISION === 'FOOD'
+  // FJ: DIVISION === 'FOOD' — grouped as SIZE -> BRAND -> SKU SIZE MANUAL
   const fjRaw = data.filter(r => r['DIVISION'] === 'FOOD');
-  // Group by BRAND -> SKU SIZE MANUAL, sum CM_VOL
   const fjMap = {};
   fjRaw.forEach(r => {
+    const size  = r['SIZE']  || 'Other';
     const brand = r['BRAND'] || 'Unknown';
-    const sku = r['SKU SIZE MANUAL'] || r['MATERIALNAME'] || 'Unknown';
-    const vol = parseFloat(r['CM_VOL']) || 0;
-    if (!fjMap[brand]) fjMap[brand] = {};
-    if (!fjMap[brand][sku]) fjMap[brand][sku] = 0;
-    fjMap[brand][sku] += vol;
+    const sku   = r['SKU SIZE MANUAL'] || r['MATERIALNAME'] || 'Unknown';
+    const vol   = parseFloat(r['CM_VOL']) || 0;
+    if (!fjMap[size]) fjMap[size] = {};
+    if (!fjMap[size][brand]) fjMap[size][brand] = {};
+    if (!fjMap[size][brand][sku]) fjMap[size][brand][sku] = 0;
+    fjMap[size][brand][sku] += vol;
   });
   fjData = fjMap;
 
@@ -395,31 +425,35 @@ function fmt(v) {
 }
 
 function renderFJ() {
-  const brands = Object.keys(fjData).sort();
+  const sizes = Object.keys(fjData).sort();
   let grandTotal = 0;
   let rows = '';
+  let totalBrands = new Set();
+  let totalSkus = 0;
 
-  brands.forEach(brand => {
-    const skus = Object.keys(fjData[brand]).sort();
-    let brandTotal = 0;
-    skus.forEach(sku => {
-      const vol = fjData[brand][sku];
-      brandTotal += vol;
-      grandTotal += vol;
-      rows += `<tr>
-        <td class="product-name">${sku}</td>
-        <td class="${vol === 0 ? 'zero' : ''}">${fmt(vol)}</td>
-      </tr>`;
+  sizes.forEach(size => {
+    let sizeTotal = 0;
+    const brands = Object.keys(fjData[size]).sort();
+    // SIZE header row
+    rows += `<tr class="size-header"><td colspan="2">${size}</td></tr>`;
+    brands.forEach(brand => {
+      totalBrands.add(brand);
+      const skus = Object.keys(fjData[size][brand]).sort();
+      let brandTotal = 0;
+      skus.forEach(sku => {
+        totalSkus++;
+        const vol = fjData[size][brand][sku];
+        brandTotal += vol;
+        sizeTotal  += vol;
+        grandTotal += vol;
+        rows += `<tr><td class="product-name sku-indent">${sku}</td><td class="${vol === 0 ? 'zero' : ''}">${fmt(vol)}</td></tr>`;
+      });
+      rows += `<tr class="brand-subtotal"><td class="brand-indent">${brand} Total</td><td>${fmt(brandTotal)}</td></tr>`;
     });
-    rows += `<tr class="brand-subtotal">
-      <td>${brand} Total</td>
-      <td>${fmt(brandTotal)}</td>
-    </tr>`;
+    rows += `<tr class="size-total"><td>${size} Total</td><td>${fmt(sizeTotal)}</td></tr>`;
   });
 
-  // Stats
-  const totalBrands = brands.length;
-  const totalSkus = Object.values(fjData).reduce((a, b) => a + Object.keys(b).length, 0);
+  totalBrands = totalBrands.size;
 
   const html = `
     <div class="summary-bar">
