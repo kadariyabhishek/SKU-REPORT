@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKU Report Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f10;
+    --surface: #181820;
+    --surface2: #1e1e28;
+    --border: #2a2a38;
+    --accent-fj: #e8f754;
+    --accent-ccd: #54d4f7;
+    --text: #f0f0f5;
+    --muted: #7070a0;
+    --total-bg: #2a2a1a;
+    --total-fj: #c8d740;
+    --subtotal-bg: #1a2a20;
+    --subtotal-text: #54f795;
+    --zero: #3a3a50;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  header {
+    padding: 28px 40px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .logo span { color: var(--accent-fj); }
+
+  .upload-area {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .upload-btn:hover { border-color: var(--accent-fj); color: var(--accent-fj); }
+  .upload-btn svg { width: 16px; height: 16px; }
+  #fileInput { display: none; }
+
+  .file-status {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .file-status.loaded { color: var(--accent-fj); }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 40px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .tab {
+    padding: 16px 32px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+    color: var(--muted);
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active-fj { border-bottom-color: var(--accent-fj); color: var(--accent-fj); }
+  .tab.active-ccd { border-bottom-color: var(--accent-ccd); color: var(--accent-ccd); }
+
+  .content { padding: 32px 40px; }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 40vh;
+    gap: 16px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    text-align: center;
+  }
+  .empty-state svg { opacity: 0.3; }
+
+  /* Table Styles */
+  .table-wrapper {
+    max-width: 800px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .table-header {
+    background: var(--surface2);
+    padding: 0;
+  }
+
+  .division-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .division-label.fj { color: var(--accent-fj); background: rgba(232,247,84,0.06); }
+  .division-label.ccd { color: var(--accent-ccd); background: rgba(84,212,247,0.06); }
+  .division-label::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  thead tr th {
+    padding: 10px 18px;
+    text-align: left;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  thead tr th:last-child { text-align: right; }
+
+  tbody tr { transition: background 0.1s; }
+  tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+  tbody tr td {
+    padding: 8px 18px;
+    border-bottom: 1px solid rgba(42,42,56,0.5);
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  tbody tr td:last-child {
+    text-align: right;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* Zero values */
+  td.zero { color: var(--zero); }
+
+  /* Brand subtotal rows */
+  tr.brand-subtotal td {
+    background: var(--subtotal-bg);
+    color: var(--subtotal-text);
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(84,247,149,0.12);
+  }
+
+  /* Grand total row */
+  tr.grand-total td {
+    background: var(--total-bg);
+    color: var(--total-fj);
+    font-weight: 700;
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-top: 1px solid rgba(200,215,64,0.2);
+  }
+
+  .ccd-grand-total td {
+    background: rgba(84,212,247,0.08);
+    color: var(--accent-ccd);
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    border-top: 1px solid rgba(84,212,247,0.2);
+  }
+
+  /* Indent SKU items */
+  td.product-name { padding-left: 28px; }
+  td.brand-name { padding-left: 18px; color: var(--subtotal-text); font-weight: 500; }
+
+  .summary-bar {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 24px;
+    min-width: 160px;
+  }
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+  }
+  .stat-value.fj { color: var(--accent-fj); }
+  .stat-value.ccd { color: var(--accent-ccd); }
+  .stat-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">SKU <span>Report</span></div>
+  <div class="upload-area">
+    <label class="upload-btn" for="fileInput">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      Upload Excel
+    </label>
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+    <span class="file-status" id="fileStatus">No file loaded</span>
+  </div>
+</header>
+
+<div class="tabs" id="tabs" style="display:none">
+  <div class="tab active-fj" id="tab-fj" onclick="switchTab('fj')">🟡 FJ / Food</div>
+  <div class="tab" id="tab-ccd" onclick="switchTab('ccd')">🔵 CCD</div>
+</div>
+
+<div class="content" id="content">
+  <div class="empty-state">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+    <div>Upload an Excel file to view the report</div>
+    <div style="font-size:12px;opacity:0.5">Supports .xlsx files with DIVISION, MATERIALNAME, SKU SIZE MANUAL, BRAND, CM_VOL columns</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+let fjData = [], ccdData = [];
+let activeTab = 'fj';
+
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('fileStatus').textContent = 'Loading...';
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+
+      // First pass: find the real header row (look for 'DIVISION' or 'HQ')
+      const rawNoHeader = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+      let headerRowIndex = 0;
+      for (let i = 0; i < Math.min(20, rawNoHeader.length); i++) {
+        const row = rawNoHeader[i];
+        if (row && row.some(cell => cell === 'DIVISION' || cell === 'HQ')) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+
+      // Re-parse with correct header row
+      const raw = XLSX.utils.sheet_to_json(ws, { defval: null, range: headerRowIndex });
+      processData(raw);
+      document.getElementById('fileStatus').textContent = file.name;
+      document.getElementById('fileStatus').className = 'file-status loaded';
+      document.getElementById('tabs').style.display = 'flex';
+      renderActive();
+    } catch(err) {
+      document.getElementById('fileStatus').textContent = 'Error reading file';
+      console.error(err);
+    }
+  };
+  reader.readAsBinaryString(file);
+});
+
+function processData(raw) {
+  // Filter out total rows (no STOCKIEST CODE)
+  const data = raw.filter(r => r['STOCKIEST CODE']);
+
+  // FJ: DIVISION === 'FOOD'
+  const fjRaw = data.filter(r => r['DIVISION'] === 'FOOD');
+  // Group by BRAND -> SKU SIZE MANUAL, sum CM_VOL
+  const fjMap = {};
+  fjRaw.forEach(r => {
+    const brand = r['BRAND'] || 'Unknown';
+    const sku = r['SKU SIZE MANUAL'] || r['MATERIALNAME'] || 'Unknown';
+    const vol = parseFloat(r['CM_VOL']) || 0;
+    if (!fjMap[brand]) fjMap[brand] = {};
+    if (!fjMap[brand][sku]) fjMap[brand][sku] = 0;
+    fjMap[brand][sku] += vol;
+  });
+  fjData = fjMap;
+
+  // CCD: DIVISION === 'CCD'
+  const ccdRaw = data.filter(r => r['DIVISION'] === 'CCD');
+  const ccdMap = {};
+  ccdRaw.forEach(r => {
+    const brand = r['BRAND'] || 'Unknown';
+    const mat = r['MATERIALNAME'] || 'Unknown';
+    const vol = parseFloat(r['CM_VOL']) || 0;
+    if (!ccdMap[brand]) ccdMap[brand] = {};
+    if (!ccdMap[brand][mat]) ccdMap[brand][mat] = 0;
+    ccdMap[brand][mat] += vol;
+  });
+  ccdData = ccdMap;
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-fj').className = 'tab' + (tab === 'fj' ? ' active-fj' : '');
+  document.getElementById('tab-ccd').className = 'tab' + (tab === 'ccd' ? ' active-ccd' : '');
+  renderActive();
+}
+
+function renderActive() {
+  if (activeTab === 'fj') renderFJ();
+  else renderCCD();
+}
+
+function fmt(v) {
+  if (v === 0) return '0';
+  return v % 1 === 0 ? v.toString() : v.toFixed(2);
+}
+
+function renderFJ() {
+  const brands = Object.keys(fjData).sort();
+  let grandTotal = 0;
+  let rows = '';
+
+  brands.forEach(brand => {
+    const skus = Object.keys(fjData[brand]).sort();
+    let brandTotal = 0;
+    skus.forEach(sku => {
+      const vol = fjData[brand][sku];
+      brandTotal += vol;
+      grandTotal += vol;
+      rows += `<tr>
+        <td class="product-name">${sku}</td>
+        <td class="${vol === 0 ? 'zero' : ''}">${fmt(vol)}</td>
+      </tr>`;
+    });
+    rows += `<tr class="brand-subtotal">
+      <td>${brand} Total</td>
+      <td>${fmt(brandTotal)}</td>
+    </tr>`;
+  });
+
+  // Stats
+  const totalBrands = brands.length;
+  const totalSkus = Object.values(fjData).reduce((a, b) => a + Object.keys(b).length, 0);
+
+  const html = `
+    <div class="summary-bar">
+      <div class="stat-card">
+        <div class="stat-label">FJ Total MTD Vol</div>
+        <div class="stat-value fj">${fmt(grandTotal)}</div>
+        <div class="stat-sub">cumulative CM_VOL</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Brands</div>
+        <div class="stat-value fj">${totalBrands}</div>
+        <div class="stat-sub">FJ / Food</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">SKUs</div>
+        <div class="stat-value fj">${totalSkus}</div>
+        <div class="stat-sub">active SKUs</div>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <div class="division-label fj">FJ — Food Division</div>
+      <div class="table-header"></div>
+      <table>
+        <thead><tr>
+          <th>Products</th>
+          <th style="text-align:right">MTD</th>
+        </tr></thead>
+        <tbody>
+          ${rows}
+          <tr class="grand-total">
+            <td>FJ TOTAL</td>
+            <td>${fmt(grandTotal)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+}
+
+function renderCCD() {
+  const brands = Object.keys(ccdData).sort();
+  let grandTotal = 0;
+  let rows = "";
+
+  brands.forEach(brand => {
+    const mats = Object.keys(ccdData[brand]).sort();
+    let brandTotal = 0;
+    mats.forEach(mat => {
+      const vol = ccdData[brand][mat];
+      brandTotal += vol;
+      grandTotal += vol;
+      rows += `<tr><td class="product-name">${mat}</td><td class="${vol === 0 ? "zero" : ""}">${fmt(vol)}</td></tr>`;
+    });
+    rows += `<tr class="brand-subtotal"><td>${brand} Total</td><td>${fmt(brandTotal)}</td></tr>`;
+  });
+
+
+  const totalSkus = Object.values(ccdData).reduce((a, b) => a + Object.keys(b).length, 0);
+
+  const html = `
+    <div class="summary-bar">
+      <div class="stat-card">
+        <div class="stat-label">CCD Total ACH MTD</div>
+        <div class="stat-value ccd">${fmt(grandTotal)}</div>
+        <div class="stat-sub">cumulative CM_VOL</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Brands</div>
+        <div class="stat-value ccd">${brands.length}</div>
+        <div class="stat-sub">CCD</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">SKUs</div>
+        <div class="stat-value ccd">${totalSkus}</div>
+        <div class="stat-sub">active SKUs</div>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <div class="division-label ccd">CCD Division</div>
+      <table>
+        <thead><tr>
+          <th>Products</th>
+          <th style="text-align:right">ACH MTD</th>
+        </tr></thead>
+        <tbody>
+          ${rows}
+          <tr class="grand-total ccd-grand-total">
+            <td>GR TOTAL</td>
+            <td>${fmt(grandTotal)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+}
+</script>
+</body>
+</html>
