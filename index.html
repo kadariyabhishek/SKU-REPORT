@@ -318,7 +318,20 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
     try {
       const wb = XLSX.read(ev.target.result, { type: 'binary' });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { defval: null });
+
+      // First pass: find the real header row (look for 'DIVISION' or 'HQ')
+      const rawNoHeader = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+      let headerRowIndex = 0;
+      for (let i = 0; i < Math.min(20, rawNoHeader.length); i++) {
+        const row = rawNoHeader[i];
+        if (row && row.some(cell => cell === 'DIVISION' || cell === 'HQ')) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+
+      // Re-parse with correct header row
+      const raw = XLSX.utils.sheet_to_json(ws, { defval: null, range: headerRowIndex });
       processData(raw);
       document.getElementById('fileStatus').textContent = file.name;
       document.getElementById('fileStatus').className = 'file-status loaded';
@@ -449,19 +462,20 @@ function renderFJ() {
 function renderCCD() {
   const brands = Object.keys(ccdData).sort();
   let grandTotal = 0;
-  let rows = '';
+  let rows = "";
 
   brands.forEach(brand => {
     const mats = Object.keys(ccdData[brand]).sort();
+    let brandTotal = 0;
     mats.forEach(mat => {
       const vol = ccdData[brand][mat];
+      brandTotal += vol;
       grandTotal += vol;
-      rows += `<tr>
-        <td class="product-name">${mat}</td>
-        <td class="${vol === 0 ? 'zero' : ''}">${fmt(vol)}</td>
-      </tr>`;
+      rows += `<tr><td class="product-name">${mat}</td><td class="${vol === 0 ? "zero" : ""}">${fmt(vol)}</td></tr>`;
     });
+    rows += `<tr class="brand-subtotal"><td>${brand} Total</td><td>${fmt(brandTotal)}</td></tr>`;
   });
+
 
   const totalSkus = Object.values(ccdData).reduce((a, b) => a + Object.keys(b).length, 0);
 
