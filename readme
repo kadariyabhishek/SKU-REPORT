@@ -1,0 +1,16 @@
+1. Go to https://marg.dabur.com.np
+2. Click Report
+3. Click Dabur Report and then SKU Report.
+4. After downloading, you need to remove some lines from the excel.
+
+For eg from Row 1 to row 5.
+{sku-report
+CompanyName : Dabur Central
+VATNO: 123456789
+ADDRESS: Kathmandu
+@ReportType: MTD @Daterange from : 01-01-2026 To 01-30-2026 @Mode: Salesman Wise -Detail}
+
+5. Upload the excel
+6. TADAAAAA your Weekly Report is ready.
+
+ENJOY!!! 
