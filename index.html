@@ -295,6 +295,61 @@
     color: var(--muted);
     margin-top: 2px;
   }
+
+  .download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .download-btn.fj {
+    background: rgba(232,247,84,0.12);
+    color: var(--accent-fj);
+    border: 1px solid rgba(232,247,84,0.3);
+  }
+  .download-btn.fj:hover {
+    background: rgba(232,247,84,0.22);
+    border-color: var(--accent-fj);
+  }
+  .download-btn.ccd {
+    background: rgba(84,212,247,0.12);
+    color: var(--accent-ccd);
+    border: 1px solid rgba(84,212,247,0.3);
+  }
+  .download-btn.ccd:hover {
+    background: rgba(84,212,247,0.22);
+    border-color: var(--accent-ccd);
+  }
+  .download-btn svg { width: 15px; height: 15px; }
+  .summary-bar { align-items: flex-end; }
+  .download-wrap { margin-left: auto; }
+
+  .download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .download-btn svg { width: 15px; height: 15px; }
+  .download-btn.fj  { background: var(--accent-fj);  color: #0f0f10; }
+  .download-btn.fj:hover  { background: #d4e040; }
+  .download-btn.ccd { background: var(--accent-ccd); color: #0f0f10; }
+  .download-btn.ccd:hover { background: #3cbfe0; }
 </style>
 </head>
 <body>
@@ -473,6 +528,12 @@ function renderFJ() {
         <div class="stat-sub">active SKUs</div>
       </div>
     </div>
+    <div class="download-wrap" style="margin-bottom:16px">
+      <button class="download-btn fj" id="btn-download-fj">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download FJ Report (.xlsx)
+      </button>
+    </div>
     <div class="table-wrapper">
       <div class="division-label fj">FJ — Food Division</div>
       <div class="table-header"></div>
@@ -491,6 +552,7 @@ function renderFJ() {
       </table>
     </div>`;
   document.getElementById('content').innerHTML = html;
+  document.getElementById('btn-download-fj').addEventListener('click', downloadFJ);
 }
 
 function renderCCD() {
@@ -531,6 +593,12 @@ function renderCCD() {
         <div class="stat-sub">active SKUs</div>
       </div>
     </div>
+    <div class="download-wrap" style="margin-bottom:16px">
+      <button class="download-btn ccd" id="btn-download-ccd">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download CCD Report (.xlsx)
+      </button>
+    </div>
     <div class="table-wrapper">
       <div class="division-label ccd">CCD Division</div>
       <table>
@@ -548,6 +616,63 @@ function renderCCD() {
       </table>
     </div>`;
   document.getElementById('content').innerHTML = html;
+  document.getElementById('btn-download-ccd').addEventListener('click', downloadCCD);
+}
+
+function downloadFJ() {
+  const wb = XLSX.utils.book_new();
+  const wsData = [['Products', 'MTD']];
+
+  const sizes = Object.keys(fjData).sort();
+  let grandTotal = 0;
+
+  sizes.forEach(size => {
+    let sizeTotal = 0;
+    wsData.push([size.toUpperCase(), '']);
+    const brands = Object.keys(fjData[size]).sort();
+    brands.forEach(brand => {
+      const skus = Object.keys(fjData[size][brand]).sort();
+      let brandTotal = 0;
+      skus.forEach(sku => {
+        const vol = fjData[size][brand][sku];
+        brandTotal += vol; sizeTotal += vol; grandTotal += vol;
+        wsData.push(['    ' + sku, vol]);
+      });
+      wsData.push([brand + ' Total', brandTotal]);
+    });
+    wsData.push([size + ' Total', sizeTotal]);
+  });
+  wsData.push(['FJ TOTAL', grandTotal]);
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch: 50}, {wch: 14}];
+  XLSX.utils.book_append_sheet(wb, ws, 'FJ Report');
+  XLSX.writeFile(wb, 'FJ_Report.xlsx');
+}
+
+function downloadCCD() {
+  const wb = XLSX.utils.book_new();
+  const wsData = [['Products', 'ACH MTD']];
+
+  const brands = Object.keys(ccdData).sort();
+  let grandTotal = 0;
+
+  brands.forEach(brand => {
+    const mats = Object.keys(ccdData[brand]).sort();
+    let brandTotal = 0;
+    mats.forEach(mat => {
+      const vol = ccdData[brand][mat];
+      brandTotal += vol; grandTotal += vol;
+      wsData.push(['    ' + mat, vol]);
+    });
+    wsData.push([brand + ' Total', brandTotal]);
+  });
+  wsData.push(['GR TOTAL', grandTotal]);
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch: 55}, {wch: 14}];
+  XLSX.utils.book_append_sheet(wb, ws, 'CCD Report');
+  XLSX.writeFile(wb, 'CCD_Report.xlsx');
 }
 </script>
 </body>
